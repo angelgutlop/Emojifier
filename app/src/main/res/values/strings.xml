@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Emojifier</string>
+    <string name="permission_denied">Permiso denegado</string>
+</resources>
