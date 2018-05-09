@@ -11,21 +11,27 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.OrientationEventListener;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.otaliastudios.cameraview.CameraListener;
 import com.otaliastudios.cameraview.CameraUtils;
 import com.otaliastudios.cameraview.CameraView;
+import com.otaliastudios.cameraview.Facing;
+
+import java.io.File;
 
 
 public class MainActivity extends AppCompatActivity {
 
-
-    private FloatingActionButton takePictureFloantingButton;
     private FloatingActionButton switchCameraFloantingButton;
 
     private FloatingActionButton closeImageFloantingButton;
+    private FloatingActionButton shareImageButton;
+    private FloatingActionButton saveImageButton;
+
+    private ImageButton takePictureImageButton;
 
 
     private CameraView cameraView;
@@ -33,10 +39,14 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_STORAGE_PERMISSION = 1;
     private static final int REQUEST_CAMERA = 2;
-    private static final int REQUEST_IMAGE_CAPTURE = 3;
 
+
+    private boolean canWriteExternalExtorage = false;
+
+    private File tempPhotoFile = null;
 
     private OrientationEventListener mOrientationListener;
+    private Bitmap tempBitmap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,21 +54,21 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-        takePictureFloantingButton = findViewById(R.id.takePictureButton);
+        takePictureImageButton = findViewById(R.id.takePictureImageButton);
+
         switchCameraFloantingButton = findViewById(R.id.switchCameraButton);
         closeImageFloantingButton = findViewById(R.id.closeImageButton);
+        shareImageButton = findViewById(R.id.shareButton);
+        saveImageButton = findViewById(R.id.saveButton);
 
         cameraView = findViewById(R.id.cameraView);
         capturedPhotoImageView = findViewById(R.id.photoCapture);
 
         //Oculta los botones de captura y rotacion de camara
-        takePictureFloantingButton.setVisibility(View.INVISIBLE);
-        switchCameraFloantingButton.setVisibility(View.INVISIBLE);
-        closeImageFloantingButton.setVisibility(View.INVISIBLE);
+        hideImage();
 
-        capturedPhotoImageView.setVisibility(View.INVISIBLE);
 
-        takePictureFloantingButton.setOnClickListener(new View.OnClickListener() {
+        takePictureImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 cameraView.capturePicture();
@@ -76,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         closeImageFloantingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startCamera();
+                return2Camera();
             }
         });
 
@@ -93,15 +103,15 @@ public class MainActivity extends AppCompatActivity {
         cameraView.addCameraListener(new CameraListener() {
             @Override
             public void onPictureTaken(byte[] picture) {
-                // Create a bitmap or a file...
-                // CameraUtils will read EXIF orientation for you, in a worker thread.
                 CameraUtils.decodeBitmap(picture, bitmapCallback);
             }
         });
 
+        cameraView.setFacing(Facing.FRONT);
 
         //Pide los permisos necesarios para usar la camara
         if (chekRequestPremissions(Manifest.permission.CAMERA, REQUEST_CAMERA)) startCamera();
+        canWriteExternalExtorage = chekRequestPremissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_STORAGE_PERMISSION);
 
 
         //Controla la orientacion del dispositivo
@@ -113,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         };
 
 
-        if (mOrientationListener.canDetectOrientation() == true) mOrientationListener.enable();
+        if (mOrientationListener.canDetectOrientation()) mOrientationListener.enable();
         else mOrientationListener.disable();
 
 
@@ -124,18 +134,14 @@ public class MainActivity extends AppCompatActivity {
         mOrientationListener.disable();
         cameraView.stop();
         super.onDestroy();
-
     }
 
 
     private void startCamera() {
-        capturedPhotoImageView.setVisibility(View.INVISIBLE);
-        closeImageFloantingButton.setVisibility(View.INVISIBLE);
 
         cameraView.setVisibility(View.VISIBLE);
         cameraView.start();
-
-        takePictureFloantingButton.setVisibility(View.VISIBLE);
+        takePictureImageButton.setVisibility(View.VISIBLE);
         switchCameraFloantingButton.setVisibility(View.VISIBLE);
     }
 
@@ -145,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
         cameraView.setVisibility(View.INVISIBLE);
         cameraView.stop();
 
-        takePictureFloantingButton.setVisibility(View.INVISIBLE);
+        takePictureImageButton.setVisibility(View.INVISIBLE);
         switchCameraFloantingButton.setVisibility(View.INVISIBLE);
     }
 
@@ -156,15 +162,70 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void processCapturePhoto(Bitmap bmp) {
+    private void showImage(Bitmap bmp) {
 
-        stopHideCamera();
         capturedPhotoImageView.setVisibility(View.VISIBLE);
         closeImageFloantingButton.setVisibility(View.VISIBLE);
 
-        Bitmap rotatedBmp = BitmapUtils.RotateBitmap(bmp, 90);
-        capturedPhotoImageView.setImageBitmap(rotatedBmp);
+        shareImageButton.setEnabled(canWriteExternalExtorage);
+        saveImageButton.setEnabled(canWriteExternalExtorage);
 
+        shareImageButton.setVisibility(View.VISIBLE);
+        saveImageButton.setVisibility(View.VISIBLE);
+
+        capturedPhotoImageView.setVisibility(View.VISIBLE);
+        capturedPhotoImageView.setImageBitmap(bmp);
+    }
+
+
+    private void hideImage() {
+
+        capturedPhotoImageView.setVisibility(View.INVISIBLE);
+        closeImageFloantingButton.setVisibility(View.INVISIBLE);
+
+        shareImageButton.setVisibility(View.INVISIBLE);
+        saveImageButton.setVisibility(View.INVISIBLE);
+        capturedPhotoImageView.setVisibility(View.INVISIBLE);
+    }
+
+
+    private void return2Camera() {
+        hideImage();
+        BitmapUtils.deleteTempFile(MainActivity.this, tempPhotoFile);
+        tempPhotoFile = null;
+        tempBitmap = null;
+        startCamera();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (cameraView.getVisibility() == View.INVISIBLE) return2Camera();
+        else super.onBackPressed();
+
+    }
+
+    private void processCapturePhoto(Bitmap bmp) {
+
+        canWriteExternalExtorage = chekRequestPremissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_STORAGE_PERMISSION);
+
+        stopHideCamera();
+
+        Bitmap rotatedBmp = BitmapUtils.RotateBitmap(bmp, 0);
+
+        //c reescale bmp to fit the screen resolution
+
+        Bitmap rescaledBmp = BitmapUtils.resamplePic(this, rotatedBmp);
+
+        Bitmap detectedBMP = Emojifier.detectFaces(this, rescaledBmp);
+
+        tempBitmap = rotatedBmp;
+
+        if (canWriteExternalExtorage) {
+            tempPhotoFile = BitmapUtils.createTempFile(this, rotatedBmp);
+        }
+
+        // capturedPhotoImageView.setImageBitmap(rotatedBmp);
+        showImage(detectedBMP);
 
     }
 
@@ -172,9 +233,22 @@ public class MainActivity extends AppCompatActivity {
     private void rotateViews(int orientation) {
         int rotationAngle = 0;
         if (orientation == 90 || orientation == 270) rotationAngle = orientation - 180;
-        takePictureFloantingButton.setRotation(rotationAngle);
+
+        // takePictureImageButton.setRotation(rotationAngle);
+
         switchCameraFloantingButton.setRotation(rotationAngle);
     }
+
+
+    public void compartirImagen(View view) {
+        BitmapUtils.saveImage(this, tempBitmap);
+        BitmapUtils.shareImage(this, tempPhotoFile);
+    }
+
+    public void salvarImagen(View view) {
+        BitmapUtils.saveImage(this, tempBitmap);
+    }
+
 
     private boolean chekRequestPremissions(String PERMISO, int idPERMISO) {
 
@@ -207,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 case REQUEST_STORAGE_PERMISSION: {
-
+                    canWriteExternalExtorage = true;
                     break;
                 }
             }

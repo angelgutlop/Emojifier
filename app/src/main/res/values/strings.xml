@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Emojifier</string>
     <string name="permission_denied">Permiso denegado</string>
+    <string name="photoDescription">Fotografis sobre la que poner un emoji</string>
+    <string name="photoButtonCaptureDescription">Botón para capturar la fotografia</string>
 </resources>
