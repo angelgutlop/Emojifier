@@ -19,11 +19,10 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.angel.emojifier.FaceTraking.CameraSourcePreview;
+import com.example.angel.emojifier.FaceTraking.GraphicOverlay;
+import com.example.angel.emojifier.FaceTraking.TrackingFaces;
 import com.google.android.gms.vision.face.Face;
-import com.otaliastudios.cameraview.CameraListener;
-import com.otaliastudios.cameraview.CameraUtils;
-import com.otaliastudios.cameraview.CameraView;
-import com.otaliastudios.cameraview.Facing;
 
 import java.io.File;
 
@@ -42,12 +41,15 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressBar progressBar;
     private TextView progressBarTex;
-    private CameraView cameraView;
+    // private CameraView cameraView;
     private ImageView capturedPhotoImageView;
 
     private static final int REQUEST_STORAGE_PERMISSION = 1;
     private static final int REQUEST_CAMERA = 2;
 
+    private GraphicOverlay mGraphicOverlay;
+    CameraSourcePreview cameraSourcePreview;
+    TrackingFaces trackingFaces = new TrackingFaces();
 
     private boolean canWriteExternalExtorage = false;
 
@@ -74,9 +76,12 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         progressBarTex = findViewById(R.id.messageDuringDetecting);
 
-        cameraView = findViewById(R.id.cameraView);
+        // cameraView = findViewById(R.id.cameraView);
         capturedPhotoImageView = findViewById(R.id.photoCapture);
 
+
+        mGraphicOverlay = findViewById(R.id.faceOverlay);
+        cameraSourcePreview = findViewById(R.id.cameraSource);
 
         //Oculta los botones de captura y rotacion de camara
         hideImage();
@@ -86,7 +91,13 @@ public class MainActivity extends AppCompatActivity {
         takePictureImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                cameraView.capturePicture();
+                cameraSourcePreview.takePicture(new CameraSourcePreview.BitmapCallback() {
+                    @Override
+                    public void onBitmapReady(Bitmap bitmap) {
+                        processCapturePhoto(bitmap);
+                    }
+                });
+                //cameraView.capturePicture();
             }
         });
 
@@ -105,24 +116,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //Configura la cámara para que procese la imagen; Esta funcion se llama tras capturepicture en el evento click
 
+        trackingFaces.configureCamera(this, mGraphicOverlay);
 
-        final CameraUtils.BitmapCallback bitmapCallback = new CameraUtils.BitmapCallback() {
-            @Override
-            public void onBitmapReady(Bitmap bitmap) {
-                processCapturePhoto(bitmap);
-            }
-        };
-
-        cameraView.addCameraListener(new CameraListener() {
-            @Override
-            public void onPictureTaken(byte[] picture) {
-                CameraUtils.decodeBitmap(picture, bitmapCallback);
-            }
-        });
-
-        cameraView.setFacing(Facing.BACK);
 
         //Pide los permisos necesarios para usar la camara
         if (chekRequestPremissions(Manifest.permission.CAMERA, REQUEST_CAMERA)) startCamera();
@@ -147,15 +143,18 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         mOrientationListener.disable();
-        cameraView.stop();
+
+        cameraSourcePreview.stop();
         super.onDestroy();
     }
 
 
     private void startCamera() {
 
-        cameraView.setVisibility(View.VISIBLE);
-        cameraView.start();
+        cameraSourcePreview.setVisibility(View.VISIBLE);
+
+        cameraSourcePreview.start(trackingFaces, mGraphicOverlay);
+
         takePictureImageButton.setVisibility(View.VISIBLE);
         switchCameraFloantingButton.setVisibility(View.VISIBLE);
     }
@@ -163,8 +162,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopHideCamera() {
 
-        cameraView.setVisibility(INVISIBLE);
-        cameraView.stop();
+        cameraSourcePreview.setVisibility(View.INVISIBLE);
+        cameraSourcePreview.stop();
+
 
         takePictureImageButton.setVisibility(INVISIBLE);
         switchCameraFloantingButton.setVisibility(INVISIBLE);
@@ -172,8 +172,8 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void switchCamera() {
+        cameraSourcePreview.toggleCamera();
 
-        cameraView.toggleFacing();
 
     }
 
@@ -221,7 +221,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (cameraView.getVisibility() == INVISIBLE) {
+
+        if (cameraSourcePreview.getVisibility() == INVISIBLE) {
             detectFacesTask.cancel(true);
             showProgresbar(false);
             return2Camera();
@@ -247,9 +248,6 @@ public class MainActivity extends AppCompatActivity {
 
         detectFacesTask = new DetectFaces();
         detectFacesTask.execute(rescaledBMP);
-      /*  SparseArray<Face> faces = Emojifier.detectFaces(this, rescaledBMP);
-        processCapturePhotoEnd(faces);*/
-
 
     }
 
@@ -273,8 +271,6 @@ public class MainActivity extends AppCompatActivity {
     private void rotateViews(int orientation) {
         int rotationAngle = 0;
         if (orientation == 90 || orientation == 270) rotationAngle = orientation - 180;
-
-        // takePictureImageButton.setRotation(rotationAngle);
 
         switchCameraFloantingButton.setRotation(rotationAngle);
     }
