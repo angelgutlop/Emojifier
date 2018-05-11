@@ -4,14 +4,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Environment;
 import android.support.v4.content.FileProvider;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.WindowManager;
 import android.widget.Toast;
+
+import com.google.android.gms.vision.face.Face;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -32,12 +36,13 @@ public class BitmapUtils {
 
 
     public static Bitmap RotateBitmap(Bitmap source, float angle) {
+        if (angle == 0) return source;
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
     }
 
-    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-ddHHmmssS", Locale.ENGLISH);
+    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HHmmssS", Locale.ENGLISH);
 
     public static File createTempFile(Context context, Bitmap bitmap) {
         Date currentTime = Calendar.getInstance().getTime();
@@ -46,6 +51,13 @@ public class BitmapUtils {
 
         try {
             file = File.createTempFile(nombreFichero, ".jpg", context.getExternalCacheDir());
+
+            FileOutputStream fOut = new FileOutputStream(file);
+
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fOut);
+            fOut.flush();
+            fOut.close();
+
         } catch (IOException e) {
             Log.e(TAG, "Unable to write into external storage medium.");
             e.printStackTrace();
@@ -104,6 +116,7 @@ public class BitmapUtils {
 
         Intent shareIntent = new Intent(Intent.ACTION_SEND);
         shareIntent.setType("image/*");
+        shareIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         Uri photoURI = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, imageFile);
         shareIntent.putExtra(Intent.EXTRA_STREAM, photoURI);
         context.startActivity(shareIntent);
@@ -158,11 +171,54 @@ public class BitmapUtils {
 
     }
 
+
+    public static Bitmap dibujarEmojis(Context context, Bitmap fondo, SparseArray<Face> faces) {
+
+        Bitmap tmpBMP = fondo;
+
+        for (int i = 0; i < faces.size(); i++) {
+            tmpBMP = superponerEmoji(context, tmpBMP, faces.valueAt(i));
+        }
+
+        return tmpBMP;
+    }
+
+    public static Bitmap superponerEmoji(Context context, Bitmap fondo, Face face) {
+
+        Bitmap workingBitmap = Bitmap.createBitmap(fondo);
+        Bitmap finalBmp = workingBitmap.copy(Bitmap.Config.ARGB_8888, true);
+
+        double scale = 0.9;
+
+
+        int emojiRId = Emojifier.getEmoji(context, face);
+        Bitmap emojiBMP = BitmapFactory.decodeResource(context.getResources(), emojiRId);
+        double aspectRatio = (double) emojiBMP.getHeight() / (double) emojiBMP.getWidth();
+
+        int emojiWith = (int) (face.getWidth() * scale);
+        int emojiHeight = (int) (face.getWidth() * aspectRatio * scale);
+
+
+        emojiBMP = Bitmap.createScaledBitmap(emojiBMP, emojiWith, emojiHeight, false);
+
+        Canvas canvas = new Canvas(finalBmp);
+
+        float emojiPositionX =
+                (face.getPosition().x + face.getWidth() / 2) - emojiBMP.getWidth() / 2;
+        float emojiPositionY =
+                (face.getPosition().y + face.getHeight() / 2) - emojiBMP.getHeight() / 3;
+        canvas.drawBitmap(emojiBMP, emojiPositionX, emojiPositionY, null);
+
+        return finalBmp;
+
+    }
+
     private static byte[] bmp2Byte(Bitmap bitmap) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
         return stream.toByteArray();
 
     }
+
 
 }

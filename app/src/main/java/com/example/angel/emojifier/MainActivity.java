@@ -3,24 +3,31 @@ package com.example.angel.emojifier;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.SparseArray;
 import android.view.OrientationEventListener;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.vision.face.Face;
 import com.otaliastudios.cameraview.CameraListener;
 import com.otaliastudios.cameraview.CameraUtils;
 import com.otaliastudios.cameraview.CameraView;
 import com.otaliastudios.cameraview.Facing;
 
 import java.io.File;
+
+import static android.view.View.INVISIBLE;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -33,7 +40,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageButton takePictureImageButton;
 
-
+    private ProgressBar progressBar;
+    private TextView progressBarTex;
     private CameraView cameraView;
     private ImageView capturedPhotoImageView;
 
@@ -43,10 +51,13 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean canWriteExternalExtorage = false;
 
-    private File tempPhotoFile = null;
+    private File photoFile = null;
+    private Bitmap photoBitmap;
 
     private OrientationEventListener mOrientationListener;
-    private Bitmap tempBitmap;
+
+    private DetectFaces detectFacesTask = new DetectFaces();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,12 +71,16 @@ public class MainActivity extends AppCompatActivity {
         closeImageFloantingButton = findViewById(R.id.closeImageButton);
         shareImageButton = findViewById(R.id.shareButton);
         saveImageButton = findViewById(R.id.saveButton);
+        progressBar = findViewById(R.id.progressBar);
+        progressBarTex = findViewById(R.id.messageDuringDetecting);
 
         cameraView = findViewById(R.id.cameraView);
         capturedPhotoImageView = findViewById(R.id.photoCapture);
 
+
         //Oculta los botones de captura y rotacion de camara
         hideImage();
+        showProgresbar(false);
 
 
         takePictureImageButton.setOnClickListener(new View.OnClickListener() {
@@ -107,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        cameraView.setFacing(Facing.FRONT);
+        cameraView.setFacing(Facing.BACK);
 
         //Pide los permisos necesarios para usar la camara
         if (chekRequestPremissions(Manifest.permission.CAMERA, REQUEST_CAMERA)) startCamera();
@@ -148,11 +163,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopHideCamera() {
 
-        cameraView.setVisibility(View.INVISIBLE);
+        cameraView.setVisibility(INVISIBLE);
         cameraView.stop();
 
-        takePictureImageButton.setVisibility(View.INVISIBLE);
-        switchCameraFloantingButton.setVisibility(View.INVISIBLE);
+        takePictureImageButton.setVisibility(INVISIBLE);
+        switchCameraFloantingButton.setVisibility(INVISIBLE);
     }
 
 
@@ -180,52 +195,77 @@ public class MainActivity extends AppCompatActivity {
 
     private void hideImage() {
 
-        capturedPhotoImageView.setVisibility(View.INVISIBLE);
-        closeImageFloantingButton.setVisibility(View.INVISIBLE);
+        capturedPhotoImageView.setVisibility(INVISIBLE);
+        closeImageFloantingButton.setVisibility(INVISIBLE);
 
-        shareImageButton.setVisibility(View.INVISIBLE);
-        saveImageButton.setVisibility(View.INVISIBLE);
-        capturedPhotoImageView.setVisibility(View.INVISIBLE);
+        shareImageButton.setVisibility(INVISIBLE);
+        saveImageButton.setVisibility(INVISIBLE);
+        capturedPhotoImageView.setVisibility(INVISIBLE);
+    }
+
+    private void showProgresbar(boolean show) {
+        int status = show ? View.VISIBLE : View.INVISIBLE;
+        progressBar.setVisibility(status);
+        progressBarTex.setVisibility(status);
+
     }
 
 
     private void return2Camera() {
         hideImage();
-        BitmapUtils.deleteTempFile(MainActivity.this, tempPhotoFile);
-        tempPhotoFile = null;
-        tempBitmap = null;
+        BitmapUtils.deleteTempFile(MainActivity.this, photoFile);
+        photoFile = null;
+        photoBitmap = null;
         startCamera();
     }
 
     @Override
     public void onBackPressed() {
-        if (cameraView.getVisibility() == View.INVISIBLE) return2Camera();
-        else super.onBackPressed();
+        if (cameraView.getVisibility() == INVISIBLE) {
+            detectFacesTask.cancel(true);
+            showProgresbar(false);
+            return2Camera();
+
+        } else super.onBackPressed();
 
     }
 
+    Bitmap rescaledBMP;
+
     private void processCapturePhoto(Bitmap bmp) {
 
-        canWriteExternalExtorage = chekRequestPremissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_STORAGE_PERMISSION);
 
         stopHideCamera();
+        showProgresbar(true);
+
 
         Bitmap rotatedBmp = BitmapUtils.RotateBitmap(bmp, 0);
 
         //c reescale bmp to fit the screen resolution
 
-        Bitmap rescaledBmp = BitmapUtils.resamplePic(this, rotatedBmp);
+        rescaledBMP = BitmapUtils.resamplePic(this, rotatedBmp);
 
-        Bitmap detectedBMP = Emojifier.detectFaces(this, rescaledBmp);
+        detectFacesTask = new DetectFaces();
+        detectFacesTask.execute(rescaledBMP);
+      /*  SparseArray<Face> faces = Emojifier.detectFaces(this, rescaledBMP);
+        processCapturePhotoEnd(faces);*/
 
-        tempBitmap = rotatedBmp;
 
+    }
+
+
+    private void processCapturePhotoEnd(SparseArray<Face> faces) {
+        Bitmap facesBMP = BitmapUtils.dibujarEmojis(this, rescaledBMP, faces);
+
+        showImage(facesBMP);
+        showProgresbar(false);
+
+        canWriteExternalExtorage = chekRequestPremissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_STORAGE_PERMISSION);
+
+        photoBitmap = facesBMP;
         if (canWriteExternalExtorage) {
-            tempPhotoFile = BitmapUtils.createTempFile(this, rotatedBmp);
+            photoFile = BitmapUtils.createTempFile(this, facesBMP);
         }
-
-        // capturedPhotoImageView.setImageBitmap(rotatedBmp);
-        showImage(detectedBMP);
 
     }
 
@@ -241,12 +281,12 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void compartirImagen(View view) {
-        BitmapUtils.saveImage(this, tempBitmap);
-        BitmapUtils.shareImage(this, tempPhotoFile);
+        BitmapUtils.saveImage(this, photoBitmap);
+        BitmapUtils.shareImage(this, photoFile);
     }
 
     public void salvarImagen(View view) {
-        BitmapUtils.saveImage(this, tempBitmap);
+        BitmapUtils.saveImage(this, photoBitmap);
     }
 
 
@@ -268,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        // Called when you request permission to read and write to external storage
+        // Called when you request permission to read and write to externa storage
 
         if (grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -291,5 +331,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    private class DetectFaces extends AsyncTask<Bitmap, Integer, SparseArray<Face>> {
+        protected SparseArray<Face> doInBackground(Bitmap... bmps) {
+            Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+            Bitmap bmp = bmps[0];
+            return Emojifier.detectFaces(MainActivity.this, bmp);
+        }
+
+        protected void onPostExecute(SparseArray<Face> faces) {
+            processCapturePhotoEnd(faces);
+        }
+
+        @Override
+        protected void onCancelled() {
+            super.onCancelled();
+        }
+    }
 
 }
