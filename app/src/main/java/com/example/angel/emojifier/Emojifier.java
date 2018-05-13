@@ -21,7 +21,7 @@ public class Emojifier {
     private static FaceDetector detector;
 
 
-    enum ESTADO_OJOS {
+    public enum ESTADO_OJOS {
         CERRADOS,
         DERECHO_CERRADO,
         IZQUIERDO_CERRADO,
@@ -31,7 +31,7 @@ public class Emojifier {
 
     }
 
-    enum ESTADO_SONRISA {
+    public enum ESTADO_SONRISA {
         MUY_TRISTE,
         TRISTE,
         NEUTRAL,
@@ -173,7 +173,7 @@ public class Emojifier {
     }
 
 
-    private static ESTADO_OJOS getEyesStatus(Context context, Face face) {
+    public static ESTADO_OJOS getEyesStatus(Context context, Face face) {
 
         float lefEyeProb = face.getIsLeftEyeOpenProbability();
         float rightEyeProb = face.getIsRightEyeOpenProbability();
@@ -196,7 +196,48 @@ public class Emojifier {
         return ESTADO_OJOS.DESCONOCIDO;
     }
 
-    private static ESTADO_SONRISA gestSmilleStatus(Context context, Face face) {
+    public static String getSmilletatusString(Context context, Face face) {
+        Emojifier.ESTADO_SONRISA sonrisa = Emojifier.gestSmilleStatus(context, face);
+
+        switch (sonrisa) {
+            case HAPPY:
+                return "Muy contento";
+            case CONTENTO:
+                return "Contento";
+            case NEUTRAL:
+                return "Poco animado";
+            case TRISTE:
+                return "Triste";
+            case MUY_TRISTE:
+                return "Muy triste";
+        }
+        return "";
+    }
+
+    public static String getEyeStatusString(Context context, Face face) {
+        Emojifier.ESTADO_OJOS ojos = Emojifier.getEyesStatus(context, face);
+
+        switch (ojos) {
+            case MUY_ABIERTOS:
+                return "Ojos muy abiertos";
+            case ABIERTOS:
+                return "Ojos abiertos";
+            case CERRADOS:
+                return "Ojos cerrados";
+            case DERECHO_CERRADO:
+                return "Guiño derecho";
+            case IZQUIERDO_CERRADO:
+                return "Giño izquierdo";
+            case DESCONOCIDO:
+                return "No se";
+        }
+
+        return "";
+
+
+    }
+
+    public static ESTADO_SONRISA gestSmilleStatus(Context context, Face face) {
         float smillingProb = face.getIsSmilingProbability();
 
         float muyTriste = ResourcesUtils.getDimen(context, R.dimen.SONRISA_MUY_TRISTE);

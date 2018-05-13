@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 
+import com.example.angel.emojifier.Emojifier;
 import com.google.android.gms.vision.face.Face;
 
 /**
@@ -20,10 +21,8 @@ class FaceGraphic extends GraphicOverlay.Graphic {
     private static final float ID_Y_OFFSET = 50.0f;
     private static final float ID_X_OFFSET = -50.0f;
     private static final float BOX_STROKE_WIDTH = 5.0f;
-    private static final double SMILING_PROB_THRESHOLD = .15;
-    private static final double EYE_OPEN_PROB_THRESHOLD = .5;
-    private static final int COLOR_CHOICES[] = {
 
+    private static final int COLOR_CHOICES[] = {
             Color.BLUE,
             Color.CYAN,
             Color.GREEN,
@@ -31,7 +30,6 @@ class FaceGraphic extends GraphicOverlay.Graphic {
             Color.RED,
             Color.WHITE,
             Color.YELLOW
-
     };
 
     private static int mCurrentColorIndex = 0;
@@ -97,11 +95,7 @@ class FaceGraphic extends GraphicOverlay.Graphic {
 
         float x = translateX(face.getPosition().x + face.getWidth() / 2);
         float y = translateY(face.getPosition().y + face.getHeight() / 2);
-        canvas.drawCircle(x, y, FACE_POSITION_RADIUS, mFacePositionPaint);
-        canvas.drawText("id: " + mFaceId, x + ID_X_OFFSET, y + ID_Y_OFFSET, mIdPaint);
 
-        canvas.drawText("Felicidad: " + String.format("%.2f", face.getIsSmilingProbability()), x - ID_X_OFFSET, y - ID_Y_OFFSET, mIdPaint);
-        canvas.drawText("Estado: " + getUpdates(), x - ID_X_OFFSET, y - ID_Y_OFFSET + 3 * ID_TEXT_SIZE, mIdPaint);
 
 // Draws a bounding box around the face.
 
@@ -112,33 +106,15 @@ class FaceGraphic extends GraphicOverlay.Graphic {
         float right = x + xOffset;
         float bottom = y + yOffset;
 
+
         canvas.drawRect(left, top, right, bottom, mBoxPaint);
 
+        String felicidadString = Emojifier.getSmilletatusString(mContext, face);
+        String ojosString = Emojifier.getEyeStatusString(mContext, face);
+        canvas.drawText("Felicidad: " + felicidadString, left, bottom + ID_TEXT_SIZE, mIdPaint);
+        canvas.drawText(ojosString, left, bottom + 2 * ID_TEXT_SIZE, mIdPaint);
 
     }
 
-
-    private String getUpdates() {
-
-        String update;
-
-        boolean smiling = mFace.getIsSmilingProbability() > SMILING_PROB_THRESHOLD;
-
-        boolean leftEyeClosed = mFace.getIsLeftEyeOpenProbability() < EYE_OPEN_PROB_THRESHOLD;
-
-        boolean rightEyeClosed = mFace.getIsRightEyeOpenProbability() < EYE_OPEN_PROB_THRESHOLD;
-
-
-        if (leftEyeClosed && !rightEyeClosed) update = "Guiño izquierdo";
-        else if (rightEyeClosed && !leftEyeClosed) update = "Guiño derecho";
-        else if (rightEyeClosed && leftEyeClosed) update = "Ojos cerrados";
-        else update = "Ojos abiertos";
-
-
-        if (smiling) update = update + " con sonrisa";
-        else update = update + " triste";
-
-        return update;
-    }
 
 }

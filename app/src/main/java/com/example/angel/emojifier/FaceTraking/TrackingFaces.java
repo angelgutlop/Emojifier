@@ -1,19 +1,12 @@
 package com.example.angel.emojifier.FaceTraking;
 
 import android.content.Context;
-import android.util.Log;
-import android.widget.Toast;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.MultiProcessor;
 import com.google.android.gms.vision.Tracker;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
-import com.otaliastudios.cameraview.CameraView;
-
-import java.io.IOException;
 
 public class TrackingFaces {
 
@@ -21,46 +14,74 @@ public class TrackingFaces {
     private static final String TAG = "TrackingFaces";
     private GraphicOverlay mGraphicOverlay;
     private Context mContext;
+    FaceDetector detector = null;
+
+    private static final float FPS = 30;
+    private static final int VRES = 720;
+    private static final int HRES = 1080;
+
+
     private CameraSource mCameraSource = null;
-    private CameraSourcePreview mPreview;
+
+    public CameraSource getCameraSource() {
+        return mCameraSource;
+    }
 
 
-    public void start(Context context, CameraView cameraView) {
+    //todo release detector
+    public void configureCamera(Context context, GraphicOverlay overlay) {
+
         mContext = context;
-        FaceDetector detector = new FaceDetector.Builder(context)
-                .build();
+        mGraphicOverlay = overlay;
 
-
-        detector.setProcessor(new MultiProcessor.Builder<Face>(new GraphicFaceTrackerFactory()).build());
-
+        detector = createDetector(mContext);
 
         mCameraSource = new CameraSource.Builder(context, detector)
-                .setRequestedPreviewSize(1024, 720)
-                .setFacing(CameraSource.CAMERA_FACING_FRONT)
-                .setRequestedFps(30.0f)
+                .setRequestedPreviewSize(HRES, VRES)
+                .setFacing(CameraSource.CAMERA_FACING_BACK)
+                .setRequestedFps(FPS)
                 .setAutoFocusEnabled(true)
                 .build();
     }
 
-    private void startCameraSource() {
 
-        // check that the device has play services available.
-        int code = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(mContext);
-        if (code != ConnectionResult.SUCCESS) {
-            Toast.makeText(mContext, "Servicios google play no disponibles", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    public CameraSource switchCamera() {
 
-        if (mCameraSource != null) {
-            try {
-                mPreview.start(mCameraSource, mGraphicOverlay);
-            } catch (IOException e) {
-                Log.e(TAG, "Imposible iniciar la cámara.", e);
-                mCameraSource.release();
-                mCameraSource = null;
-            }
-        }
+        detector.release();
+        detector = null;
+
+        detector = createDetector(mContext);
+
+        int newFacing;
+
+        int oldFacing = mCameraSource.getCameraFacing();
+
+        if (oldFacing == CameraSource.CAMERA_FACING_BACK)
+            newFacing = CameraSource.CAMERA_FACING_FRONT;
+        else newFacing = CameraSource.CAMERA_FACING_BACK;
+
+        mCameraSource = new CameraSource.Builder(mContext, detector)
+                .setRequestedPreviewSize(HRES, VRES)
+                .setFacing(newFacing)
+                .setRequestedFps(FPS)
+                .setAutoFocusEnabled(true)
+                .build();
+
+        return mCameraSource;
     }
+
+    private FaceDetector createDetector(Context context) {
+        FaceDetector det = new FaceDetector.Builder(mContext)
+                .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
+                .build();
+
+        det.setProcessor(new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory()).build());
+
+        return det;
+
+    }
+
 
     private class GraphicFaceTrackerFactory implements MultiProcessor.Factory<Face> {
         @Override

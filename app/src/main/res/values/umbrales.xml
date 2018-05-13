@@ -4,12 +4,12 @@
     <item name="text_line_spacing" format="float" type="dimen">1.0</item>
 
     <dimen name="SONRISA_MUY_TRISTE">0.0</dimen>
-    <dimen name="SONRISA_TRISTE">0.3</dimen>
+    <dimen name="SONRISA_TRISTE">0.15</dimen>
     <dimen name="SONRISA_NEUTRO">0.4</dimen>
     <dimen name="SONRISA_CONTENTO">0.5</dimen>
     <dimen name="SONRISA_HAPPY">0.8</dimen>
 
-    <dimen name="OJO_NEUTRO">0.5</dimen>
+    <dimen name="OJO_NEUTRO">0.2</dimen>
     <dimen name="OJO_MUY_ABIERTO">0.8</dimen>
 
     <array name="SONRISA">

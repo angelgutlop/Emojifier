@@ -15,8 +15,15 @@
  */
 package com.example.angel.emojifier.FaceTraking;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.hardware.Camera;
+import android.support.annotation.StringDef;
+import android.support.v4.app.ActivityCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -27,15 +34,33 @@ import com.google.android.gms.common.images.Size;
 import com.google.android.gms.vision.CameraSource;
 
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Field;
+
 
 public class CameraSourcePreview extends ViewGroup {
     private static final String TAG = "CameraSourcePreview";
+
+    @StringDef({
+            Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE,
+            Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO,
+            Camera.Parameters.FOCUS_MODE_AUTO,
+            Camera.Parameters.FOCUS_MODE_EDOF,
+            Camera.Parameters.FOCUS_MODE_FIXED,
+            Camera.Parameters.FOCUS_MODE_INFINITY,
+            Camera.Parameters.FOCUS_MODE_MACRO
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    private @interface FocusMode {
+    }
 
     private Context mContext;
     private SurfaceView mSurfaceView;
     private boolean mStartRequested;
     private boolean mSurfaceAvailable;
     private CameraSource mCameraSource;
+    private TrackingFaces mtrackingFaces;
 
     private GraphicOverlay mOverlay;
 
@@ -48,9 +73,38 @@ public class CameraSourcePreview extends ViewGroup {
         mSurfaceView = new SurfaceView(context);
         mSurfaceView.getHolder().addCallback(new SurfaceCallback());
         addView(mSurfaceView);
+
     }
 
-    public void start(CameraSource cameraSource) throws IOException {
+
+    public interface BitmapCallback {
+        void onBitmapReady(Bitmap bitmap);
+    }
+
+    public Bitmap takePicture(final BitmapCallback bitmapCallback) {
+        CameraSource.PictureCallback pictureCallback = new CameraSource.PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] bytes) {
+                Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                bitmapCallback.onBitmapReady(bmp);
+            }
+        };
+
+        mCameraSource.takePicture(null, pictureCallback);
+        return null;
+        //CameraSource.ShutterCallback shutterCallback = new CameraSource.ShutterCallback();
+        //  CameraSource.PictureCallback pictureCallback;
+        //    mCameraSource.takePicture(shutterCallback, pictureCallback);
+    }
+
+    public void toggleCamera() {
+        release();
+        mtrackingFaces.switchCamera();
+        start(mtrackingFaces, mOverlay);
+    }
+
+    public void start(CameraSource cameraSource) {
+
         if (cameraSource == null) {
             stop();
         }
@@ -59,13 +113,19 @@ public class CameraSourcePreview extends ViewGroup {
 
         if (mCameraSource != null) {
             mStartRequested = true;
-            startIfReady();
+            try {
+                startIfReady();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    public void start(CameraSource cameraSource, GraphicOverlay overlay) throws IOException {
+
+    public void start(TrackingFaces trackingFaces, GraphicOverlay overlay) {
+        mtrackingFaces = trackingFaces;
         mOverlay = overlay;
-        start(cameraSource);
+        start(trackingFaces.getCameraSource());
     }
 
     public void stop() {
@@ -82,18 +142,30 @@ public class CameraSourcePreview extends ViewGroup {
     }
 
     private void startIfReady() throws IOException {
+
+        setAutoFocus(mCameraSource, Camera.Parameters.FOCUS_MODE_AUTO);
+        
         if (mStartRequested && mSurfaceAvailable) {
+            if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+
             mCameraSource.start(mSurfaceView.getHolder());
+
             if (mOverlay != null) {
                 Size size = mCameraSource.getPreviewSize();
                 int min = Math.min(size.getWidth(), size.getHeight());
                 int max = Math.max(size.getWidth(), size.getHeight());
+
+                int d1 = size.getWidth();
+                int d2 = size.getHeight();
+
                 if (isPortraitMode()) {
                     // Swap width and height sizes when in portrait, since it will be rotated by
                     // 90 degrees
-                    mOverlay.setCameraInfo(min, max, mCameraSource.getCameraFacing());
+                    mOverlay.setCameraInfo(d2, d1, mCameraSource.getCameraFacing());
                 } else {
-                    mOverlay.setCameraInfo(max, min, mCameraSource.getCameraFacing());
+                    mOverlay.setCameraInfo(d1, d2, mCameraSource.getCameraFacing());
                 }
                 mOverlay.clear();
             }
@@ -149,11 +221,11 @@ public class CameraSourcePreview extends ViewGroup {
         int childHeight = (int) (((float) layoutWidth / (float) width) * height);
 
         // If height is too tall using fit width, does fit height instead.
-        if (childHeight > layoutHeight) {
+     /*   if (childHeight > layoutHeight) {
             childHeight = layoutHeight;
             childWidth = (int) (((float) layoutHeight / (float) height) * width);
         }
-
+*/
         for (int i = 0; i < getChildCount(); ++i) {
             getChildAt(i).layout(0, 0, childWidth, childHeight);
         }
@@ -177,4 +249,40 @@ public class CameraSourcePreview extends ViewGroup {
         Log.d(TAG, "isPortraitMode returning false by default");
         return false;
     }
+
+
+    private boolean setAutoFocus(CameraSource cameraSource, @FocusMode String focusMode) {
+
+
+        Field[] declaredFields = CameraSource.class.getDeclaredFields();
+
+        for (Field field : declaredFields) {
+            if (field.getType() == Camera.class) {
+                field.setAccessible(true);
+                try {
+                    Camera camera = (Camera) field.get(cameraSource);
+                    if (camera != null) {
+                        Camera.Parameters params = camera.getParameters();
+
+                        if (!params.getSupportedFocusModes().contains(focusMode)) {
+                            return false;
+                        }
+
+                        params.setFocusMode(focusMode);
+                        camera.setParameters(params);
+                        return true;
+                    }
+
+                    return false;
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+
+                break;
+            }
+        }
+        return true;
+    }
+
+
 }

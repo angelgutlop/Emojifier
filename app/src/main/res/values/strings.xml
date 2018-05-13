@@ -3,5 +3,5 @@
     <string name="permission_denied">Permiso denegado</string>
     <string name="photoDescription">Fotografis sobre la que poner un emoji</string>
     <string name="photoButtonCaptureDescription">Botón para capturar la fotografia</string>
-    <string name="detectingfacesMessage">Detecting faces</string>
+    <string name="detectingfacesMessage">Procesando caras</string>
 </resources>

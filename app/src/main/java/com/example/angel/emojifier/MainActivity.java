@@ -26,29 +26,38 @@ import com.google.android.gms.vision.face.Face;
 
 import java.io.File;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
 import static android.view.View.INVISIBLE;
 
 
 public class MainActivity extends AppCompatActivity {
-
-    private FloatingActionButton switchCameraFloantingButton;
-
-    private FloatingActionButton closeImageFloantingButton;
-    private FloatingActionButton shareImageButton;
-    private FloatingActionButton saveImageButton;
-
-    private ImageButton takePictureImageButton;
-
-    private ProgressBar progressBar;
-    private TextView progressBarTex;
-    // private CameraView cameraView;
-    private ImageView capturedPhotoImageView;
+    @BindView(R.id.switchCameraButton)
+    FloatingActionButton switchCameraFloantingButton;
+    @BindView(R.id.closeImageButton)
+    FloatingActionButton closeImageFloantingButton;
+    @BindView(R.id.shareButton)
+    FloatingActionButton shareImageButton;
+    @BindView(R.id.saveButton)
+    FloatingActionButton saveImageButton;
+    @BindView(R.id.takePictureImageButton)
+    ImageButton takePictureImageButton;
+    @BindView(R.id.progressBar)
+    ProgressBar progressBar;
+    @BindView(R.id.messageDuringDetecting)
+    TextView progressBarTex;
+    @BindView(R.id.photoCapture)
+    ImageView capturedPhotoImageView;
+    @BindView(R.id.faceOverlay)
+    GraphicOverlay mGraphicOverlay;
+    @BindView(R.id.cameraSource)
+    CameraSourcePreview cameraSourcePreview;
 
     private static final int REQUEST_STORAGE_PERMISSION = 1;
     private static final int REQUEST_CAMERA = 2;
 
-    private GraphicOverlay mGraphicOverlay;
-    CameraSourcePreview cameraSourcePreview;
+
     TrackingFaces trackingFaces = new TrackingFaces();
 
     private boolean canWriteExternalExtorage = false;
@@ -66,24 +75,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ButterKnife.bind(this);
 
-        takePictureImageButton = findViewById(R.id.takePictureImageButton);
-
-        switchCameraFloantingButton = findViewById(R.id.switchCameraButton);
-        closeImageFloantingButton = findViewById(R.id.closeImageButton);
-        shareImageButton = findViewById(R.id.shareButton);
-        saveImageButton = findViewById(R.id.saveButton);
-        progressBar = findViewById(R.id.progressBar);
-        progressBarTex = findViewById(R.id.messageDuringDetecting);
-
-        // cameraView = findViewById(R.id.cameraView);
-        capturedPhotoImageView = findViewById(R.id.photoCapture);
-
-
-        mGraphicOverlay = findViewById(R.id.faceOverlay);
-        cameraSourcePreview = findViewById(R.id.cameraSource);
 
         //Oculta los botones de captura y rotacion de camara
+        getSupportActionBar().hide();
+
         hideImage();
         showProgresbar(false);
 
@@ -97,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
                         processCapturePhoto(bitmap);
                     }
                 });
-                //cameraView.capturePicture();
             }
         });
 
