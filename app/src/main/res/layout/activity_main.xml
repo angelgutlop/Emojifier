@@ -96,22 +96,20 @@
         app:srcCompat="@drawable/ic_save_white_24dp" />
 
     <com.example.angel.emojifier.FaceTraking.CameraSourcePreview
-        android:id="@+id/cameraSource"
+        android:id="@+id/cameraSourcePreview"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:background="@android:color/holo_blue_bright"
+        android:layout_height="match_parent"
         android:visibility="visible"
-        app:layout_constraintBottom_toTopOf="@+id/takePictureImageButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.example.angel.emojifier.FaceTraking.GraphicOverlay
             android:id="@+id/faceOverlay"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:layout_marginEnd="591dp"
+            android:layout_marginRight="591dp"
             android:visibility="visible"
-            app:layout_constraintBottom_toBottomOf="@+id/cameraSource"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -150,5 +148,19 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/progressBar" />
+
+    <ImageView
+        android:id="@+id/cameraOffImageView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/icons"
+        android:padding="150dp"
+        app:layout_constraintBottom_toTopOf="@+id/takePictureImageButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/camera_off"
+        android:contentDescription="@string/camaraOffDescripcion" />
+
 
 </android.support.constraint.ConstraintLayout>

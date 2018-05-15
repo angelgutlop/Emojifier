@@ -9,8 +9,8 @@
     <dimen name="SONRISA_CONTENTO">0.5</dimen>
     <dimen name="SONRISA_HAPPY">0.8</dimen>
 
-    <dimen name="OJO_NEUTRO">0.2</dimen>
-    <dimen name="OJO_MUY_ABIERTO">0.8</dimen>
+    <dimen name="OJO_NEUTRO">0.6</dimen>
+    <dimen name="OJO_MUY_ABIERTO">0.9</dimen>
 
     <array name="SONRISA">
         <item>@dimen/SONRISA_MUY_TRISTE</item>

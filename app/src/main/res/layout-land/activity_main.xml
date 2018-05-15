@@ -69,8 +69,8 @@
         android:layout_marginEnd="24dp"
         android:layout_marginRight="24dp"
         android:clickable="true"
-        android:onClick="compartirImagen"
         android:focusable="true"
+        android:onClick="compartirImagen"
         android:visibility="visible"
         app:backgroundTint="@color/floatingButtons"
         app:layout_constraintBottom_toTopOf="@+id/saveButton"
@@ -87,8 +87,8 @@
         android:layout_marginRight="32dp"
         android:layout_marginTop="8dp"
         android:clickable="true"
-        android:onClick="salvarImagen"
         android:focusable="true"
+        android:onClick="salvarImagen"
         app:backgroundTint="@color/floatingButtons"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -96,23 +96,25 @@
         app:layout_constraintVertical_bias="0.98"
         app:srcCompat="@drawable/ic_save_white_24dp" />
 
+
     <com.example.angel.emojifier.FaceTraking.CameraSourcePreview
-        android:id="@+id/cameraSource"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@android:color/holo_blue_bright"
+        android:id="@+id/cameraSourcePreview"
+        android:layout_width="646dp"
+        android:layout_height="match_parent"
         android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/takePictureImageButton"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.example.angel.emojifier.FaceTraking.GraphicOverlay
             android:id="@+id/faceOverlay"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:layout_marginEnd="591dp"
+            android:layout_marginRight="591dp"
             android:visibility="visible"
-            app:layout_constraintBottom_toBottomOf="@+id/cameraSource"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -124,8 +126,10 @@
         android:layout_height="match_parent"
         android:background="@color/accent"
         android:contentDescription="@string/photoButtonCaptureDescription"
-        app:srcCompat="@drawable/ic_camera_alt_white_48dp"
-        tools:layout_editor_absoluteX="0dp" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/ic_camera_alt_white_48dp" />
 
     <ProgressBar
         android:id="@+id/progressBar"
@@ -151,5 +155,19 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/progressBar" />
+
+    <ImageView
+        android:id="@+id/cameraOffImageView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/icons"
+        android:padding="140dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.261"
+        app:layout_constraintStart_toEndOf="@+id/takePictureImageButton"
+        app:layout_constraintTop_toTopOf="@+id/cameraSourcePreview"
+        app:srcCompat="@drawable/camera_off"
+        android:contentDescription="@string/camaraOffDescripcion" />
 
 </android.support.constraint.ConstraintLayout>

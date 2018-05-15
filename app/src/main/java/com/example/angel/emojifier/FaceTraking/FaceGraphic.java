@@ -16,10 +16,8 @@ import com.google.android.gms.vision.face.Face;
 
 class FaceGraphic extends GraphicOverlay.Graphic {
 
-    private static final float FACE_POSITION_RADIUS = 10.0f;
+
     private static final float ID_TEXT_SIZE = 40.0f;
-    private static final float ID_Y_OFFSET = 50.0f;
-    private static final float ID_X_OFFSET = -50.0f;
     private static final float BOX_STROKE_WIDTH = 5.0f;
 
     private static final int COLOR_CHOICES[] = {
@@ -40,6 +38,8 @@ class FaceGraphic extends GraphicOverlay.Graphic {
     private volatile Face mFace;
     private int mFaceId;
     private Context mContext;
+
+    private boolean showAdvancedData = true;
 
     FaceGraphic(GraphicOverlay overlay, Context context) {
 
@@ -64,6 +64,10 @@ class FaceGraphic extends GraphicOverlay.Graphic {
         mFaceId = id;
     }
 
+    public int getId() {
+        return mFaceId;
+    }
+
     /**
      * Updates the face instance from the detection of the most recent frame. Invalidates the
      * <p>
@@ -73,6 +77,7 @@ class FaceGraphic extends GraphicOverlay.Graphic {
     void updateFace(Face face) {
         mFace = face;
         postInvalidate();
+
     }
 
     /**
@@ -109,8 +114,16 @@ class FaceGraphic extends GraphicOverlay.Graphic {
 
         canvas.drawRect(left, top, right, bottom, mBoxPaint);
 
+
         String felicidadString = Emojifier.getSmilletatusString(mContext, face);
         String ojosString = Emojifier.getEyeStatusString(mContext, face);
+
+        if (showAdvancedData) {
+
+            felicidadString = felicidadString + String.format("(%1.1f)", face.getIsSmilingProbability());
+            ojosString = ojosString + String.format("(%1.1f-%1.1f)", face.getIsLeftEyeOpenProbability(), face.getIsRightEyeOpenProbability());
+        }
+
         canvas.drawText("Felicidad: " + felicidadString, left, bottom + ID_TEXT_SIZE, mIdPaint);
         canvas.drawText(ojosString, left, bottom + 2 * ID_TEXT_SIZE, mIdPaint);
 

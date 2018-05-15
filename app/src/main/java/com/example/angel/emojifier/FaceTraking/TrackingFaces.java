@@ -1,6 +1,7 @@
 package com.example.angel.emojifier.FaceTraking;
 
 import android.content.Context;
+import android.util.SparseArray;
 
 import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.MultiProcessor;
@@ -8,13 +9,27 @@ import com.google.android.gms.vision.Tracker;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
 
+import static com.google.android.gms.vision.face.FaceDetector.ACCURATE_MODE;
+
 public class TrackingFaces {
 
 
-    private static final String TAG = "TrackingFaces";
+    private SparseArray<Face> facesDetected = new SparseArray<>();
+
+    public SparseArray<Face> getFaces() {
+
+        return facesDetected;
+
+    }
+
+    public enum CAMERA_FACING {
+        FRONT,
+        BACK
+    }
+
     private GraphicOverlay mGraphicOverlay;
     private Context mContext;
-    FaceDetector detector = null;
+    private FaceDetector detector = null;
 
     private static final float FPS = 30;
     private static final int VRES = 720;
@@ -28,17 +43,28 @@ public class TrackingFaces {
     }
 
 
-    //todo release detector
-    public void configureCamera(Context context, GraphicOverlay overlay) {
+    public void configureCamera(Context context, GraphicOverlay overlay, CAMERA_FACING camera_facing) {
 
         mContext = context;
         mGraphicOverlay = overlay;
 
         detector = createDetector(mContext);
 
+        int facing = 0;
+        switch (camera_facing) {
+            case BACK: {
+                facing = CameraSource.CAMERA_FACING_BACK;
+                break;
+            }
+            case FRONT: {
+                facing = CameraSource.CAMERA_FACING_FRONT;
+                break;
+            }
+        }
+
         mCameraSource = new CameraSource.Builder(context, detector)
                 .setRequestedPreviewSize(HRES, VRES)
-                .setFacing(CameraSource.CAMERA_FACING_BACK)
+                .setFacing(facing)
                 .setRequestedFps(FPS)
                 .setAutoFocusEnabled(true)
                 .build();
@@ -70,10 +96,12 @@ public class TrackingFaces {
         return mCameraSource;
     }
 
+
     private FaceDetector createDetector(Context context) {
-        FaceDetector det = new FaceDetector.Builder(mContext)
+        FaceDetector det = new FaceDetector.Builder(context)
                 .setLandmarkType(FaceDetector.ALL_LANDMARKS)
                 .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
+                .setMode(ACCURATE_MODE)
                 .build();
 
         det.setProcessor(new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory()).build());
@@ -82,6 +110,11 @@ public class TrackingFaces {
 
     }
 
+    public void release() {
+        detector.release();
+        mCameraSource.release();
+
+    }
 
     private class GraphicFaceTrackerFactory implements MultiProcessor.Factory<Face> {
         @Override
@@ -103,8 +136,9 @@ public class TrackingFaces {
          * Start tracking the detected face instance within the face overlay.
          */
         @Override
-        public void onNewItem(int faceId, Face item) {
+        public void onNewItem(int faceId, Face face) {
             mFaceGraphic.setId(faceId);
+            facesDetected.put(faceId, face);
         }
 
         /**
@@ -114,6 +148,7 @@ public class TrackingFaces {
         public void onUpdate(FaceDetector.Detections<Face> detectionResults, Face face) {
             mOverlay.add(mFaceGraphic);
             mFaceGraphic.updateFace(face);
+            facesDetected.put(mFaceGraphic.getId(), face);
         }
 
         /**
@@ -124,6 +159,8 @@ public class TrackingFaces {
         @Override
         public void onMissing(FaceDetector.Detections<Face> detectionResults) {
             mOverlay.remove(mFaceGraphic);
+            facesDetected.remove(mFaceGraphic.getId());
+
         }
 
         /**
@@ -132,7 +169,9 @@ public class TrackingFaces {
          */
         @Override
         public void onDone() {
+            facesDetected.remove(mFaceGraphic.getId());
             mOverlay.remove(mFaceGraphic);
+
         }
     }
 

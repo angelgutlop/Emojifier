@@ -35,6 +35,24 @@ public class BitmapUtils {
     private static final String FILE_PROVIDER_AUTHORITY = "com.example.angel.emojifier.fileprovider";
 
 
+    public static Bitmap flipBitmapHorizontally(Bitmap bitmap) {
+        Matrix matrix = new Matrix();
+
+        int cx = bitmap.getWidth() / 2;
+        int cy = bitmap.getHeight() / 2;
+        matrix.postScale(-1, 1, cx, cy);
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
+
+    public static Bitmap flipBitmapVertically(Bitmap bitmap) {
+        Matrix matrix = new Matrix();
+
+        int cx = bitmap.getWidth() / 2;
+        int cy = bitmap.getHeight() / 2;
+        matrix.postScale(1, -1, cx, cy);
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
+
     public static Bitmap RotateBitmap(Bitmap source, float angle) {
         if (angle == 0) return source;
         Matrix matrix = new Matrix();
@@ -193,6 +211,9 @@ public class BitmapUtils {
 
         int emojiRId = Emojifier.getEmoji(context, face);
         Bitmap emojiBMP = BitmapFactory.decodeResource(context.getResources(), emojiRId);
+
+        emojiBMP = flipBitmapHorizontally(emojiBMP);
+
         double aspectRatio = (double) emojiBMP.getHeight() / (double) emojiBMP.getWidth();
 
         int emojiWith = (int) (face.getWidth() * scale);

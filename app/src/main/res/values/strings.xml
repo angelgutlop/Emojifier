@@ -4,4 +4,5 @@
     <string name="photoDescription">Fotografis sobre la que poner un emoji</string>
     <string name="photoButtonCaptureDescription">Botón para capturar la fotografia</string>
     <string name="detectingfacesMessage">Procesando caras</string>
+    <string name="camaraOffDescripcion">Imagen de camara no disponible</string>
 </resources>

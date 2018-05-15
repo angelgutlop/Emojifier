@@ -11,7 +11,6 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.SparseArray;
-import android.view.OrientationEventListener;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -28,6 +27,7 @@ import java.io.File;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 import static android.view.View.INVISIBLE;
 
@@ -51,21 +51,25 @@ public class MainActivity extends AppCompatActivity {
     ImageView capturedPhotoImageView;
     @BindView(R.id.faceOverlay)
     GraphicOverlay mGraphicOverlay;
-    @BindView(R.id.cameraSource)
+    @BindView(R.id.cameraSourcePreview)
     CameraSourcePreview cameraSourcePreview;
+    @BindView(R.id.cameraOffImageView)
+    ImageView cameraOffImageView;
 
     private static final int REQUEST_STORAGE_PERMISSION = 1;
     private static final int REQUEST_CAMERA = 2;
 
 
     TrackingFaces trackingFaces = new TrackingFaces();
+    TrackingFaces.CAMERA_FACING mFacing = TrackingFaces.CAMERA_FACING.FRONT;
 
     private boolean canWriteExternalExtorage = false;
+    private boolean canUseCamera = false;
+
 
     private File photoFile = null;
     private Bitmap photoBitmap;
 
-    private OrientationEventListener mOrientationListener;
 
     private DetectFaces detectFacesTask = new DetectFaces();
 
@@ -78,16 +82,18 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
 
-        //Oculta los botones de captura y rotacion de camara
-        getSupportActionBar().hide();
+        if (savedInstanceState != null) {
+            String keyFacing = getResources().getString(R.string.keyFacing);
+            if (savedInstanceState.containsKey(keyFacing)) {
 
-        hideImage();
-        showProgresbar(false);
-
+                mFacing = TrackingFaces.CAMERA_FACING.valueOf(savedInstanceState.getString(keyFacing));
+            }
+        }
 
         takePictureImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 cameraSourcePreview.takePicture(new CameraSourcePreview.BitmapCallback() {
                     @Override
                     public void onBitmapReady(Bitmap bitmap) {
@@ -98,65 +104,70 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        switchCameraFloantingButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                switchCamera();
-            }
-        });
-
-        closeImageFloantingButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                return2Camera();
-            }
-        });
-
-
-        trackingFaces.configureCamera(this, mGraphicOverlay);
-
-
         //Pide los permisos necesarios para usar la camara
-        if (chekRequestPremissions(Manifest.permission.CAMERA, REQUEST_CAMERA)) startCamera();
+
+
         canWriteExternalExtorage = chekRequestPremissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_STORAGE_PERMISSION);
+        canUseCamera = chekRequestPremissions(Manifest.permission.CAMERA, REQUEST_CAMERA);
 
+        switchCameraFloantingButton.setVisibility(INVISIBLE);
+        takePictureImageButton.setEnabled(false);
 
-        //Controla la orientacion del dispositivo
-        mOrientationListener = new OrientationEventListener(getApplicationContext()) {
-            @Override
-            public void onOrientationChanged(int orientation) {
-                rotateViews(orientation);
-            }
-        };
+        if (canUseCamera) showCamera();
 
-
-        if (mOrientationListener.canDetectOrientation()) mOrientationListener.enable();
-        else mOrientationListener.disable();
-
+        hideImage();
+        showProgresbar(false);
 
     }
 
     @Override
     protected void onDestroy() {
-        mOrientationListener.disable();
-
-        cameraSourcePreview.stop();
+        trackingFaces.release();
         super.onDestroy();
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+
+        outState.putString(getResources().getString(R.string.keyFacing), mFacing.toString());
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onPause() {
+        cameraSourcePreview.stop();
+        super.onPause();
+    }
+
+
+    @Override
+    protected void onResume() {
+        if (canUseCamera) {
+            startCamera();
+        }
+        super.onResume();
+
+    }
 
     private void startCamera() {
 
-        cameraSourcePreview.setVisibility(View.VISIBLE);
+        takePictureImageButton.setEnabled(true);
 
+        trackingFaces.configureCamera(this, mGraphicOverlay, mFacing);
         cameraSourcePreview.start(trackingFaces, mGraphicOverlay);
+        mGraphicOverlay.clear();
+    }
 
+    private void showCamera() {
+        cameraOffImageView.setVisibility(View.INVISIBLE);
+        cameraSourcePreview.setVisibility(View.VISIBLE);
         takePictureImageButton.setVisibility(View.VISIBLE);
         switchCameraFloantingButton.setVisibility(View.VISIBLE);
     }
 
 
     private void stopHideCamera() {
+
 
         cameraSourcePreview.setVisibility(View.INVISIBLE);
         cameraSourcePreview.stop();
@@ -166,11 +177,10 @@ public class MainActivity extends AppCompatActivity {
         switchCameraFloantingButton.setVisibility(INVISIBLE);
     }
 
-
-    private void switchCamera() {
+    @OnClick(R.id.switchCameraButton)
+    public void switchCamera() {
         cameraSourcePreview.toggleCamera();
-
-
+        mFacing = cameraSourcePreview.getCameraFacing();
     }
 
     private void showImage(Bitmap bmp) {
@@ -206,17 +216,20 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
-    private void return2Camera() {
+    @OnClick(R.id.closeImageButton)
+    public void return2Camera() {
         hideImage();
         BitmapUtils.deleteTempFile(MainActivity.this, photoFile);
         photoFile = null;
         photoBitmap = null;
+
+        showCamera();
         startCamera();
     }
 
     @Override
     public void onBackPressed() {
+
 
         if (cameraSourcePreview.getVisibility() == INVISIBLE) {
             detectFacesTask.cancel(true);
@@ -308,6 +321,8 @@ public class MainActivity extends AppCompatActivity {
             switch (requestCode) {
 
                 case REQUEST_CAMERA: {
+                    canUseCamera = true;
+                    showCamera();
                     startCamera();
                     break;
                 }
@@ -325,9 +340,12 @@ public class MainActivity extends AppCompatActivity {
 
 
     private class DetectFaces extends AsyncTask<Bitmap, Integer, SparseArray<Face>> {
+
         protected SparseArray<Face> doInBackground(Bitmap... bmps) {
             Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+
             Bitmap bmp = bmps[0];
+            //   return trackingFaces.getFaces();
             return Emojifier.detectFaces(MainActivity.this, bmp);
         }
 
@@ -339,6 +357,42 @@ public class MainActivity extends AppCompatActivity {
         protected void onCancelled() {
             super.onCancelled();
         }
+    }
+
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemUI();
+        }
+    }
+
+    private void hideSystemUI() {
+        // Enables regular immersive mode.
+        // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
+        // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE
+        View decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE
+                        // Set the content to appear under the system bars so that the
+                        // content doesn't resize when the system bars hide and show.
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        // Hide the nav bar and status bar
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN);
+    }
+
+    // Shows the system bars by removing all the flags
+// except for the ones that make the content appear under the system bars.
+    private void showSystemUI() {
+        View decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
     }
 
 }

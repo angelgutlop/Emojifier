@@ -28,7 +28,10 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
+import android.widget.ZoomControls;
 
 import com.google.android.gms.common.images.Size;
 import com.google.android.gms.vision.CameraSource;
@@ -121,7 +124,6 @@ public class CameraSourcePreview extends ViewGroup {
         }
     }
 
-
     public void start(TrackingFaces trackingFaces, GraphicOverlay overlay) {
         mtrackingFaces = trackingFaces;
         mOverlay = overlay;
@@ -144,7 +146,8 @@ public class CameraSourcePreview extends ViewGroup {
     private void startIfReady() throws IOException {
 
         setAutoFocus(mCameraSource, Camera.Parameters.FOCUS_MODE_AUTO);
-        
+        enableZoom();
+
         if (mStartRequested && mSurfaceAvailable) {
             if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 return;
@@ -196,6 +199,7 @@ public class CameraSourcePreview extends ViewGroup {
 
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+
         int width = 320;
         int height = 240;
         if (mCameraSource != null) {
@@ -228,6 +232,7 @@ public class CameraSourcePreview extends ViewGroup {
 */
         for (int i = 0; i < getChildCount(); ++i) {
             getChildAt(i).layout(0, 0, childWidth, childHeight);
+            // getChildAt(i).forceLayout();
         }
 
         try {
@@ -250,9 +255,38 @@ public class CameraSourcePreview extends ViewGroup {
         return false;
     }
 
+    public TrackingFaces.CAMERA_FACING getCameraFacing() {
+        if (mCameraSource.getCameraFacing() == CameraSource.CAMERA_FACING_BACK)
+            return TrackingFaces.CAMERA_FACING.BACK;
+        else return TrackingFaces.CAMERA_FACING.FRONT;
+    }
+
+
+    private Camera getCamera(CameraSource cameraSource) {
+
+        if(cameraSource==null) return null;
+
+        Field[] declaredFields = CameraSource.class.getDeclaredFields();
+
+        for (Field field : declaredFields) {
+            if (field.getType() == Camera.class) {
+                field.setAccessible(true);
+                try {
+                    return (Camera) field.get(cameraSource);
+
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return null;
+
+    }
 
     private boolean setAutoFocus(CameraSource cameraSource, @FocusMode String focusMode) {
 
+        if(cameraSource==null) return false;
 
         Field[] declaredFields = CameraSource.class.getDeclaredFields();
 
@@ -284,5 +318,58 @@ public class CameraSourcePreview extends ViewGroup {
         return true;
     }
 
+    private ZoomControls zoomControls;
+
+    private void enableZoom() {
+        zoomControls = new ZoomControls(mContext);
+        zoomControls.setIsZoomInEnabled(true);
+        zoomControls.setIsZoomOutEnabled(true);
+        zoomControls.setOnZoomInClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                zoomCamera(false);
+
+            }
+        });
+        zoomControls.setOnZoomOutClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+
+                zoomCamera(true);
+            }
+        });
+        this.addView(zoomControls);
+    }
+
+    /**
+     * Enables zoom feature in native camera .  Called from listener of the view
+     * used for zoom in  and zoom out.
+     *
+     * @param zoomInOrOut "false" for zoom in and "true" for zoom out
+     */
+    public void zoomCamera(boolean zoomInOrOut) {
+
+        Camera mCamera = getCamera(mCameraSource);
+
+        if (mCamera != null) {
+            Camera.Parameters parameter = mCamera.getParameters();
+
+            if (parameter.isZoomSupported()) {
+                int MAX_ZOOM = parameter.getMaxZoom();
+                int currnetZoom = parameter.getZoom();
+                if (zoomInOrOut && (currnetZoom < MAX_ZOOM && currnetZoom >= 0)) {
+                    parameter.setZoom(++currnetZoom);
+                } else if (!zoomInOrOut && (currnetZoom <= MAX_ZOOM && currnetZoom > 0)) {
+                    parameter.setZoom(--currnetZoom);
+                }
+            } else
+                Toast.makeText(mContext, "Zoom Not Avaliable", Toast.LENGTH_LONG).show();
+
+            mCamera.setParameters(parameter);
+        }
+    }
 
 }
