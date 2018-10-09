@@ -1,6 +1,7 @@
 package com.example.angel.emojifier;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
@@ -24,6 +25,7 @@ import com.example.angel.emojifier.FaceTraking.TrackingFaces;
 import com.google.android.gms.vision.face.Face;
 
 import java.io.File;
+import java.util.Arrays;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -122,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        trackingFaces.release();
+if (trackingFaces!=null)        trackingFaces.release();
         super.onDestroy();
     }
 
@@ -249,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
         showProgresbar(true);
 
 
-        Bitmap rotatedBmp = BitmapUtils.RotateBitmap(bmp, 0);
+        Bitmap rotatedBmp = BitmapUtils.RotateBitmap(bmp, 90);
 
         //c reescale bmp to fit the screen resolution
 
@@ -294,18 +296,33 @@ public class MainActivity extends AppCompatActivity {
         BitmapUtils.saveImage(this, photoBitmap);
     }
 
-
-    private boolean chekRequestPremissions(String PERMISO, int idPERMISO) {
+private boolean requestingPermissions= false;
+    private boolean chekRequestPremissions(final String PERMISO, final int idPERMISO) {
 
 
         if (ContextCompat.checkSelfPermission(this, PERMISO) != PackageManager.PERMISSION_GRANTED) {
-
             // Solicita los permisos y espera a la respuesta del usuario en onRequestPermissionsResult
-            ActivityCompat.requestPermissions(this, new String[]{PERMISO}, idPERMISO);
+
+            final Activity activity= this;
+            Thread tr =new Thread( new Runnable() {
+                @Override
+                public void run() {
+                    while(requestingPermissions==true) {
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    };
+                    requestingPermissions= true;
+                    ActivityCompat.requestPermissions(activity, new String[]{PERMISO}, idPERMISO );
+
+                }
+            });
+            tr.start();
             return false;
         } else {
             return true;
-
         }
     }
 
@@ -334,8 +351,10 @@ public class MainActivity extends AppCompatActivity {
             }
         } else {
             //Si no se conceden los permisos, avisa al usuario
-            Toast.makeText(this, R.string.permission_denied, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getResources().getString(R.string.permission_denied) + " " +Arrays.toString(permissions), Toast.LENGTH_SHORT).show();
         }
+
+        requestingPermissions= false;
     }
 
 
@@ -358,41 +377,9 @@ public class MainActivity extends AppCompatActivity {
             super.onCancelled();
         }
     }
-
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
-            hideSystemUI();
-        }
-    }
-
-    private void hideSystemUI() {
-        // Enables regular immersive mode.
-        // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
-        // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE
-        View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_IMMERSIVE
-                        // Set the content to appear under the system bars so that the
-                        // content doesn't resize when the system bars hide and show.
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        // Hide the nav bar and status bar
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN);
-    }
-
-    // Shows the system bars by removing all the flags
-// except for the ones that make the content appear under the system bars.
-    private void showSystemUI() {
-        View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-    }
-
 }
+
+
+
+
+

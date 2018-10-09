@@ -10,7 +10,6 @@ import android.net.Uri;
 import android.os.Environment;
 import android.support.v4.content.FileProvider;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -27,7 +26,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
-import static android.content.ContentValues.TAG;
+import timber.log.Timber;
 
 public class BitmapUtils {
 
@@ -77,14 +76,15 @@ public class BitmapUtils {
             fOut.close();
 
         } catch (IOException e) {
-            Log.e(TAG, "Unable to write into external storage medium.");
+            Timber.d("Imposible escribir en la memoria externa: %s", e.getMessage());
             e.printStackTrace();
         }
         return file;
     }
 
-    public static void deleteTempFile(Context context, File file) {
-        if (file != null) file.delete();
+    public static boolean deleteTempFile(Context context, File file) {
+        if (file != null) return file.delete();
+        return false;
     }
 
 

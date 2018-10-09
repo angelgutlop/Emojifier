@@ -25,7 +25,6 @@ import android.hardware.Camera;
 import android.support.annotation.StringDef;
 import android.support.v4.app.ActivityCompat;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -40,6 +39,8 @@ import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Field;
+
+import timber.log.Timber;
 
 
 public class CameraSourcePreview extends ViewGroup {
@@ -183,7 +184,7 @@ public class CameraSourcePreview extends ViewGroup {
             try {
                 startIfReady();
             } catch (IOException e) {
-                Log.e(TAG, "Could not start camera source.", e);
+                Timber.d("No se puede iniciar la cámara: %s", e.getMessage());
             }
         }
 
@@ -238,7 +239,8 @@ public class CameraSourcePreview extends ViewGroup {
         try {
             startIfReady();
         } catch (IOException e) {
-            Log.e(TAG, "Could not start camera source.", e);
+            Timber.d("No se puede iniciar la cámara: %s", e.getMessage());
+
         }
     }
 
@@ -251,7 +253,8 @@ public class CameraSourcePreview extends ViewGroup {
             return true;
         }
 
-        Log.d(TAG, "isPortraitMode returning false by default");
+        Timber.d("isPortraitMode devuelve false por defecto");
+
         return false;
     }
 
@@ -264,7 +267,7 @@ public class CameraSourcePreview extends ViewGroup {
 
     private Camera getCamera(CameraSource cameraSource) {
 
-        if(cameraSource==null) return null;
+        if (cameraSource == null) return null;
 
         Field[] declaredFields = CameraSource.class.getDeclaredFields();
 
@@ -286,7 +289,7 @@ public class CameraSourcePreview extends ViewGroup {
 
     private boolean setAutoFocus(CameraSource cameraSource, @FocusMode String focusMode) {
 
-        if(cameraSource==null) return false;
+        if (cameraSource == null) return false;
 
         Field[] declaredFields = CameraSource.class.getDeclaredFields();
 
